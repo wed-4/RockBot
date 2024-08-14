@@ -19,7 +19,7 @@ def check_country_code():
         
         # 国コードを取得する
         country_code = response.text.strip()
-        allowed_countries = {'RU', 'BY', 'KP', 'CN', 'JP'}
+        allowed_countries = {'RU', 'BY', 'KP', 'CN'}
         
         # 国コードが許可されたものでない場合、プログラムを終了する
         if country_code not in allowed_countries:
